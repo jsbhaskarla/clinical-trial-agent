@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinical Trial Matcher — AI Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --black: #080808;
+      --surface: #101010;
+      --surface2: #161616;
+      --border: #222;
+      --blue: #00D4FF;
+      --blue-dim: rgba(0,212,255,0.08);
+      --white: #F0F0F0;
+      --muted: #666;
+      --green: #00FF88;
+      --font: 'Space Grotesk', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    body { background: var(--black); color: var(--white); font-family: var(--font); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 32px; border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { width: 32px; height: 32px; background: var(--blue-dim); border: 1px solid var(--blue); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .logo-text { font-size: 15px; font-weight: 600; }
+    .logo-sub { font-family: var(--mono); font-size: 10px; color: var(--blue); letter-spacing: 0.1em; }
+    .live-badge { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--green); background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); padding: 6px 12px; border-radius: 100px; }
+    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    .sidebar {
+      width: 280px; border-right: 1px solid var(--border); padding: 20px;
+      overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
+    }
+    .sidebar-title { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 8px; }
+    .example-btn {
+      width: 100%; text-align: left; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 12px; cursor: pointer; transition: all 0.2s; color: var(--white);
+      font-family: var(--font); font-size: 12px; line-height: 1.5;
+    }
+    .example-btn:hover { border-color: var(--blue); background: var(--blue-dim); }
+    .example-category { font-family: var(--mono); font-size: 10px; color: var(--blue); margin-bottom: 4px; }
+
+    .disclaimer {
+      background: rgba(255,200,0,0.06); border: 1px solid rgba(255,200,0,0.15);
+      border-radius: 6px; padding: 12px; font-size: 11px; color: #aaa; line-height: 1.6;
+    }
+    .disclaimer strong { color: #FFD700; }
+
+    .data-source {
+      background: var(--blue-dim); border: 1px solid rgba(0,212,255,0.15);
+      border-radius: 6px; padding: 12px; font-size: 11px; color: var(--muted);
+    }
+    .data-source strong { color: var(--blue); display: block; margin-bottom: 4px; }
+
+    .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+
+    .welcome {
+      text-align: center; padding: 48px 24px; max-width: 560px; margin: auto;
+    }
+    .welcome h2 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 12px; }
+    .welcome h2 span { color: var(--blue); }
+    .welcome p { color: var(--muted); font-size: 14px; line-height: 1.7; }
+
+    .message { display: flex; gap: 12px; animation: fadeUp 0.3s ease; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .message.user { flex-direction: row-reverse; }
+    .avatar { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .avatar.user { background: var(--blue); color: var(--black); }
+    .avatar.agent { background: var(--surface2); border: 1px solid var(--border); }
+
+    .bubble {
+      max-width: 70%; padding: 14px 16px; border-radius: 10px;
+      font-size: 14px; line-height: 1.7;
+    }
+    .user .bubble { background: var(--blue); color: var(--black); font-weight: 500; }
+    .agent .bubble { background: var(--surface2); border: 1px solid var(--border); color: var(--white); }
+    .agent .bubble h2, .agent .bubble h3 { color: var(--blue); margin: 12px 0 6px; font-size: 14px; }
+    .agent .bubble strong { color: var(--white); }
+    .agent .bubble a { color: var(--blue); text-decoration: none; }
+    .agent .bubble hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+    .thinking { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-family: var(--mono); }
+    .thinking-dots span { animation: blink 1.4s infinite; display: inline-block; }
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%,80%,100% { opacity: 0; } 40% { opacity: 1; } }
+
+    .input-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--surface); }
+    .input-row { display: flex; gap: 10px; }
+    #questionInput {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px; color: var(--white);
+      font-family: var(--font); font-size: 14px; outline: none; transition: border-color 0.2s;
+    }
+    #questionInput:focus { border-color: var(--blue); }
+    #questionInput::placeholder { color: var(--muted); }
+    .send-btn {
+      background: var(--blue); color: var(--black); border: none;
+      padding: 12px 24px; border-radius: 8px; font-family: var(--font);
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .send-btn:hover { background: white; }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .input-hint { font-size: 11px; color: var(--muted); margin-top: 8px; font-family: var(--mono); }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏥</div>
+    <div>
+      <div class="logo-text">Clinical Trial Matcher</div>
+      <div class="logo-sub">POWERED BY CLAUDE + CLINICALTRIALS.GOV</div>
+    </div>
+  </div>
+  <div class="live-badge">
+    <div class="live-dot"></div>
+    Live Data
+  </div>
+</header>
+
+<div class="main">
+  <div class="sidebar">
+    <div>
+      <div class="sidebar-title">Try These</div>
+      <div id="examplesList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+    <div class="data-source">
+      <strong>📡 Live Data Source</strong>
+      Pulling real-time trials from ClinicalTrials.gov — 400,000+ studies worldwide.
+    </div>
+
+    <div class="disclaimer">
+      <strong>⚠️ Medical Disclaimer</strong><br>
+      This tool is for informational purposes only. Always consult your physician before enrolling in any clinical trial.
+    </div>
+  </div>
+
+  <div class="chat-area">
+    <div class="messages" id="messages">
+      <div class="welcome">
+        <h2>Find Your <span>Clinical Trial</span></h2>
+        <p>Describe your medical situation and I'll search thousands of real recruiting trials to find ones you may qualify for.</p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-row">
+        <input type="text" id="questionInput" placeholder="Describe your condition, age, and what you're looking for..." maxlength="1000" />
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">Search Trials →</button>
+      </div>
+      <div class="input-hint">Searching 400,000+ real trials · Powered by ClinicalTrials.gov API</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const sessionId = 'session-' + Date.now();
+
+  async function loadExamples() {
+    const res = await fetch('/api/examples');
+    const examples = await res.json();
+    const list = document.getElementById('examplesList');
+    list.innerHTML = examples.map(ex => `
+      <button class="example-btn" onclick="setQuestion(this.dataset.q)" data-q="${ex.question.replace(/"/g,'&quot;')}">
+        <div class="example-category">${ex.category}</div>
+        ${ex.question}
+      </button>
+    `).join('');
+  }
+
+  function setQuestion(q) {
+    document.getElementById('questionInput').value = q;
+    document.getElementById('questionInput').focus();
+  }
+
+  function addMessage(text, role) {
+    const welcome = document.querySelector('.welcome');
+    if (welcome) welcome.remove();
+
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+
+    const avatar = role === 'user' ? '👤' : '🤖';
+    const avatarClass = role === 'user' ? 'user' : 'agent';
+
+    div.innerHTML = `
+      <div class="avatar ${avatarClass}">${avatar}</div>
+      <div class="bubble">${formatText(text)}</div>
+    `;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return div;
+  }
+
+  function addThinking() {
+    const welcome = document.querySelector('.welcome');
+    if (welcome) welcome.remove();
+
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'message agent';
+    div.id = 'thinking';
+    div.innerHTML = `
+      <div class="avatar agent">🤖</div>
+      <div class="bubble">
+        <div class="thinking">
+          Searching clinical trials
+          <div class="thinking-dots"><span>.</span><span>.</span><span>.</span></div>
+        </div>
+      </div>
+    `;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function formatText(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
+      .replace(/## (.*?)(\n|$)/g, '<h2>$1</h2>')
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
+      .replace(/---/g, '<hr>')
+      .replace(/\n/g, '<br>');
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById('questionInput');
+    const btn = document.getElementById('sendBtn');
+    const question = input.value.trim();
+    if (!question) return;
+
+    input.value = '';
+    btn.disabled = true;
+    btn.textContent = 'Searching...';
+
+    addMessage(question, 'user');
+    addThinking();
+
+    try {
+      const res = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, session_id: sessionId })
+      });
+      const data = await res.json();
+
+      const thinking = document.getElementById('thinking');
+      if (thinking) thinking.remove();
+
+      if (data.success) {
+        addMessage(data.answer, 'agent');
+      } else {
+        addMessage(`Error: ${data.error}`, 'agent');
+      }
+    } catch (err) {
+      const thinking = document.getElementById('thinking');
+      if (thinking) thinking.remove();
+      addMessage('Connection error. Please try again.', 'agent');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Search Trials →';
+    }
+  }
+
+  document.getElementById('questionInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+
+  loadExamples();
+</script>
+</body>
+</html>
