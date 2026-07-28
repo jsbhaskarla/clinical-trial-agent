@@ -87,15 +87,12 @@ def run_tool(tool_name, tool_input):
         return check_eligibility(**tool_input)
     return {"error": f"Unknown tool: {tool_name}"}
 
-# Store conversation history per session
 conversation_histories = {}
 
 def ask_agent(question, session_id="default", max_iterations=8):
-    # Get or create conversation history for this session
     if session_id not in conversation_histories:
         conversation_histories[session_id] = []
 
-    # Add new user message to history
     conversation_histories[session_id].append({
         "role": "user",
         "content": question
@@ -115,14 +112,12 @@ def ask_agent(question, session_id="default", max_iterations=8):
         )
 
         if response.stop_reason == "end_turn":
-            # Extract text response
             answer = ""
             for block in response.content:
                 if hasattr(block, "text"):
                     answer = block.text
                     break
 
-            # Save assistant response to history
             conversation_histories[session_id].append({
                 "role": "assistant",
                 "content": answer
